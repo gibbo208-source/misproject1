@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discover | About Me</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <!-- Decorative side columns -->
+    <div class="side-column left"></div>
+    <div class="side-column right"></div>
+
+    <header class="site-header">
+        <nav class="top-nav" aria-label="Primary">
+            <a class="brand" href="index.html">
+                <img src="../images/emblemleft.jpg" alt="Site Emblem" class="brand-emblem" />
+            </a>
+            <ul class="nav-links">
+                <li><a href="hobbies.html">Hobbies</a></li>
+                <li><a href="career.html">Career</a></li>
+                <li><a class="active" href="discover.html" aria-current="page">Discover</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="page-content">
+        <section class="intro">
+            <h1>Discover More</h1>
+            <p>Explore additional aspects of my life and interests.</p>
+        </section>
+
+        <section class="discover-section">
+            <h2>Northern Minnesota Roots</h2>
+            <div class="text-content">
+                <p>
+                    As a lifelong resident of Northern Minnesota, I have a deep connection to this region's 
+                    natural beauty and community values. The landscape and culture of this area have shaped 
+                    my perspective and work ethic.
+                </p>
+            </div>
+        </section>
+
+        <section class="discover-section">
+            <h2>Academic Journey</h2>
+            <div class="text-content">
+                <p>
+                    My studies in Management Information Systems at UMD's Labovitz School of Business and Economics 
+                    represent a bridge between my practical maintenance experience and the digital future. 
+                    This program allows me to combine hands-on problem-solving skills with modern technology solutions.
+                </p>
+            </div>
+        </section>
+
+        <section class="discover-section">
+            <h2>Philosophy & Literature</h2>
+            <div class="text-content">
+                <p>
+                    My interest in philosophy and 19th-century literature reflects a desire to understand 
+                    human nature and the complexities of thought. These subjects provide intellectual 
+                    stimulation and help me approach problems from multiple perspectives.
+                </p>
+            </div>
+        </section>
+
+        <section class="discover-section">
+            <h2>Future Aspirations</h2>
+            <div class="text-content">
+                <p>
+                    Looking ahead, I aim to leverage my MIS education to advance in technology-focused roles 
+                    while maintaining the practical, hands-on approach that has served me well in maintenance 
+                    and property management.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <small>&copy; <span id="year"></span> My Personal Site</small>
+    </footer>
+
+    <script>
+        // Set current year in footer
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>

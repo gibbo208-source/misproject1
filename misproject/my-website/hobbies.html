@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hobbies | About Me</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <!-- Decorative side columns -->
+    <div class="side-column left"></div>
+    <div class="side-column right"></div>
+
+    <header class="site-header">
+        <nav class="top-nav" aria-label="Primary">
+            <a class="brand" href="index.html">
+                <img src="../images/emblemleft.jpg" alt="Site Emblem" class="brand-emblem" />
+            </a>
+            <ul class="nav-links">
+                <li><a class="active" href="hobbies.html" aria-current="page">Hobbies</a></li>
+                <li><a href="career.html">Career</a></li>
+                <li><a href="discover.html">Discover</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="page-content">
+        <section class="intro">
+            <h1>My Hobbies</h1>
+            <p>Discover the passions that drive my interests beyond academics and work.</p>
+        </section>
+
+        <section class="hobby-section">
+            <h2>Video Game Collection</h2>
+            <div class="content-grid">
+                <div class="text-content">
+                    <p>
+                        Since adolescence, I have acquired a large video game collection. I prefer to buy games physically. 
+                        My favorite generation to collect for is the sixth generation (i.e., PS2, Xbox, GameCube, Dreamcast). 
+                        I also have a sizable console collection, starting with the second generation of consoles. 
+                        Additionally, I have a large digital PC library. In some ways, I like buying video games more than playing them.
+                    </p>
+                </div>
+                <div class="image-content">
+                    <img src="../images/81QWa2SdU-L.jpg" alt="Video game collection" class="hobby-image" />
+                </div>
+            </div>
+        </section>
+
+        <section class="hobby-section">
+            <h2>Writing</h2>
+            <div class="text-content">
+                <p>
+                    I have always enjoyed writing; it is the most effective form of communication, in my opinion, 
+                    as it allows one to curate their thoughts and ideas before sending them to others. 
+                    The beauty of language can also be showcased far more effectively through the written word.
+                </p>
+            </div>
+        </section>
+
+        <section class="hobby-section">
+            <h2>Other Interests</h2>
+            <div class="text-content">
+                <p>
+                    Beyond gaming and writing, I have a deep appreciation for history, philosophy, and 19th-century literature. 
+                    These subjects provide endless opportunities for intellectual exploration and help shape my worldview.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <small>&copy; <span id="year"></span> My Personal Site</small>
+    </footer>
+
+    <script>
+        // Set current year in footer
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>

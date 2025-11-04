@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career | About Me</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <!-- Decorative side columns -->
+    <div class="side-column left"></div>
+    <div class="side-column right"></div>
+
+    <header class="site-header">
+        <nav class="top-nav" aria-label="Primary">
+            <a class="brand" href="index.html">
+                <img src="../images/emblemleft.jpg" alt="Site Emblem" class="brand-emblem" />
+            </a>
+            <ul class="nav-links">
+                <li><a href="hobbies.html">Hobbies</a></li>
+                <li><a class="active" href="career.html" aria-current="page">Career</a></li>
+                <li><a href="discover.html">Discover</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="page-content">
+        <section class="intro">
+            <h1>My Career</h1>
+            <p>Professional experience and skills developed over years of dedicated work.</p>
+        </section>
+
+        <section class="career-section">
+            <h2>Current Position</h2>
+            <div class="text-content">
+                <h3>Superintendent & Maintenance Specialist</h3>
+                <p class="duration">Over 5 years of dedicated service</p>
+                <p>
+                    I have held the same position for over five years as a superintendent and maintenance specialist 
+                    at a large apartment complex. This role has provided me with extensive hands-on experience in 
+                    property management and maintenance operations.
+                </p>
+            </div>
+        </section>
+
+        <section class="career-section">
+            <h2>Technical Skills</h2>
+            <div class="skills-grid">
+                <div class="skill-category">
+                    <h3>Plumbing</h3>
+                    <p>Expertise in residential and commercial plumbing systems, repairs, and installations.</p>
+                </div>
+                <div class="skill-category">
+                    <h3>Electrical Work</h3>
+                    <p>Basic electrical maintenance and troubleshooting for residential properties.</p>
+                </div>
+                <div class="skill-category">
+                    <h3>Landscaping</h3>
+                    <p>Property maintenance, groundskeeping, and outdoor space management.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="career-section">
+            <h2>Education</h2>
+            <div class="text-content">
+                <h3>Management Information Systems (MIS)</h3>
+                <p class="institution">University of Minnesota Duluth - Labovitz School of Business and Economics</p>
+                <p>
+                    Currently pursuing a degree in Management Information Systems, combining my practical 
+                    maintenance experience with modern business and technology education.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <small>&copy; <span id="year"></span> My Personal Site</small>
+    </footer>
+
+    <script>
+        // Set current year in footer
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>
