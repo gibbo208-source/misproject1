@@ -1,0 +1,2022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Seagull Hunt</title>
+    <style>
+        :root {
+            --sky-top: #6078ff;
+            --sky-bottom: #8da0ff;
+            --grass-dark: #008800;
+            --grass-light: #00c800;
+            --grass: #258994;
+            --tree-leaf: #008800;
+            --tree-trunk: #a87800;
+            --hud-bg: #000000;
+            --hud-text: #ffffff;
+        }
+        html, body { height: 100%; margin: 0; background: #000; cursor: none; font-family: "Press Start 2P", monospace; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+        /* SCALE WRAPPER: fixed logical rectangle that will be scaled to fit mobile */
+        /* Logical resolution set to match your desktop (1920x960) so element sizes/positions remain identical */
+        #scale-viewport {
+            width: 1920px;
+            height: 960px;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform-origin: 0 0;
+            margin: 0;
+        }
+
+        /* GAME now is fixed logical rectangle (previously full-viewport) */
+        #game {
+            position: relative;
+            width: 1920px;
+            height: 960px;
+            overflow: hidden;
+            image-rendering: pixelated;
+        }
+
+        .sky { position: absolute; inset: 0; background: linear-gradient(var(--sky-top), var(--sky-bottom)); z-index: 0; }
+
+        /* Replaced vh with stable pixel values computed for 1920x960 logical rectangle:
+           25% of 960 = 240px, 5% of 960 = 48px
+           This prevents mobile browser chrome changes (address bar) from shifting the grass/HUD distances
+        */
+        #foreground { position: absolute; left: 0; right: 0; bottom: 0; height: 240px; z-index: 10; pointer-events: none; }
+        .grass {
+            position: absolute;
+            left: 0; right: 0; bottom: 0; height: 100%;
+            background-image: url('PICTURES AND VIDEOS/Grass3.png');
+            background-repeat: repeat;
+            background-size: 128px 64px;
+            background-color: var(--grass);
+        }
+
+        /* Cloud Styling */
+        .cloud {
+            position: absolute;
+            background-image: url('PICTURES AND VIDEOS/Clouds.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            z-index: 1;
+            opacity: 0.9;
+            pointer-events: none;
+        }
+        #left-cloud { top: 5%; left: 2%; width: 400px; height: 200px; }
+        #right-cloud { top: 5%; right: 5%; width: 500px; height: 250px; transform: scaleX(-1); }
+
+        /* Tree Styling (kept same pixel sizes as desktop inside logical rectangle) */
+        #left-tree, #center-tree, #right-tree { position: absolute; background-size: contain; background-repeat: no-repeat; background-position: bottom center; pointer-events: none; }
+        #left-tree { left: 5%; bottom: 240px; width: 360px; height: 950px; background-image: url('PICTURES AND VIDEOS/pine-tree.png'); z-index: 5; }
+        #center-tree { left: 50%; transform: translateX(-50%); bottom: 240px; width: 350px; height: 450px; background-image: url('PICTURES AND VIDEOS/round-tree.png'); z-index: 5; }
+        #right-tree { right: 2%; bottom: 240px; width: 480px; height: 1200px; background-image: url('PICTURES AND VIDEOS/dead-tree.png'); z-index: 8; }
+
+        #crosshair {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 100;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px black;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: #fff;
+            box-shadow: 0 0 0 2px black;
+        }
+        #crosshair::before { top: 0; bottom: 0; left: 50%; width: 3px; transform: translateX(-50%); }
+        #crosshair::after { left: 0; right: 0; top: 50%; height: 3px; transform: translateY(-50%); }
+
+        #shot-flash { position: absolute; top: 0; left: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 99; display: none; }
+        .fireball { animation: fireball-explode 0.4s ease-out forwards; }
+        @keyframes fireball-explode { 0% { transform: scale(0.1); opacity: 1; background: radial-gradient(circle, #fff, #ffdd00, #ff8c00); } 100% { transform: scale(1); opacity: 0; } }
+
+        #machinegun-flash-container .flash {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff;
+            animation: mg-flash-fade 0.12s ease-out forwards;
+        }
+        @keyframes mg-flash-fade { from { opacity: 0.7; } to { opacity: 0; } }
+
+        .turd {
+            position: absolute;
+            width: 50px; height: 50px;
+            background-image: url('PICTURES AND VIDEOS/Turd.png');
+            background-size: contain;
+            z-index: 12; /* Above dog */
+            pointer-events: none;
+        }
+
+        .turd.splat {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff;
+            animation: mg-flash-fade 0.12s ease-out forwards;
+        }
+        @keyframes mg-flash-fade { from { opacity: 0.7; } to { opacity: 0; } }
+
+        .seagull {
+            position: absolute;
+            width: 144px;
+            height: 144px;
+            background-image: url('PICTURES AND VIDEOS/seagull-sprite.png');
+            background-size: 432px 288px;
+            will-change: transform, background-position;
+            z-index: 7;
+            touch-action: none;
+        }
+        .seagull.fly-0 { background-position: 0 0; }
+        .seagull.fly-1 { background-position: -144px 0; }
+        .seagull.shot { background-position: -288px 0; }
+        .seagull.dead-ground { background-position: 0 -144px; }
+        .seagull.falling { animation: fall 0.8s linear forwards; }
+        @keyframes fall { 0% { transform: rotate(0); } 100% { transform: rotate(720deg); } }
+        .face-bird { background-size: contain !important; background-repeat: no-repeat !important; background-position: center !important; }
+
+        #flamethrower-ring {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background-image: url('PICTURES AND VIDEOS/Flamethrower Ring.png');
+            background-size: contain;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 98; /* Below crosshair, above flash */
+            display: none; /* Hidden by default */
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+
+        #big-daddy-gull {
+            position: absolute;
+            width: 170px;
+            height: 170px;
+            background-image: url('PICTURES AND VIDEOS/BigDaddyGull.png');
+            background-size: 680px 340px;
+            will-change: transform, background-position;
+            z-index: 9;
+            touch-action: none;
+        }
+        #big-daddy-gull.falling {
+            animation: fall 0.8s linear forwards;
+        }
+
+
+        #dog {
+            position: absolute;
+            bottom: -20px;
+            left: 20%;
+            width: 180px;
+            height: 180px;
+            background-image: url('PICTURES AND VIDEOS/dog-sprite.png');
+            background-size: calc(180px * 3) 180px;
+            z-index: 11;
+            transition: transform 1s ease-in-out;
+        }
+        #dog.running {
+            background-position: -360px 0; /* Use the 'retrieve' sprite for running */
+            /* The running animation will be handled by JS changing the 'left' property */
+            transition: left 0.1s linear;
+        }
+
+        .health-container {
+            position: absolute;
+            top: 20px;
+            z-index: 25;
+            width: 400px;
+            display: none; /* Hidden by default */
+        }
+        #dog-health-container { left: 20px; }
+        #boss-health-container { right: 20px; text-align: right; }
+
+        .health-label {
+            color: white;
+            text-shadow: 2px 2px 4px black;
+            margin-bottom: 5px;
+            font-size: 1.2em;
+        }
+        .health-bar-outer {
+            height: 25px;
+            border: 2px solid white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px;
+        }
+        .health-bar-inner { height: 100%; background: rgba(255, 0, 0, 0.7); width: 100%; transition: width 0.3s ease-out; }
+
+        #dog.sniff { background-position: 0 0; animation: dog-intro 2s linear; }
+        #dog.laugh { background-position: -180px 0; animation: dog-laugh-up-down 2s ease-in-out, dog-laugh-bob 0.5s 0.2s infinite; }
+        #dog.retrieve { background-position: -360px 0; }
+        @keyframes dog-intro { 0% { transform: translate(0, 0); } 50% { transform: translate(150px, -140px); } 100% { transform: translate(300px, 0); } }
+        @keyframes dog-laugh-up-down { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-140px); } }
+        @keyframes dog-laugh-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+
+        /* HUD now uses pixel height tied to logical rectangle: 5% of 960 = 48px */
+        #hud {
+            position: absolute;
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            height: 48px;
+            background: var(--hud-bg);
+            color: var(--hud-text);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* Align items to the start */
+            font-size: 1.5em;
+            padding: 0 20px;
+            gap: 60px; /* Increased space between the left-side elements */
+        }
+        .shots-display, .score-display { letter-spacing: 2px; font-size: 1.5em; }
+        .round-display { display: flex; align-items: center; font-size: 1.5em; }
+        .bird-indicator { width: 10px; height: 10px; margin: 0 2px; background: #fff; opacity: 0.3; }
+        .bird-indicator.hit { background: #ff4141; opacity: 1; }
+
+        /* Weapon Icon Styling */
+        .weapon-icon {
+            width: 40px; /* Size of each icon in the sprite */
+            height: 40px; /* Size of each icon in the sprite */	
+            transform: scale(1.2); /* Zoom in on the image */
+            transform-origin: center; /* Ensure scaling happens from the center */
+            background-image: url('PICTURES AND VIDEOS/Gun Button Sprites.png');
+            background-size: 80px 80px; /* Total size of the sprite sheet if icons are 40x40 in a 2x2 grid */
+            display: inline-block;
+            image-rendering: pixelated; /* For crisp pixel art */	
+            vertical-align: middle; /* Align icon with text */
+        }
+
+        /* Specific background positions for each icon */
+        .pistol-icon { background-position: 0 0; }
+        .machinegun-icon { background-position: -40px 0; }
+        .rocket-icon { background-position: 0 -40px; }
+        .flamethrower-icon { background-position: -40px -40px; }
+
+        .weapon-cost {
+            font-size: 1.8em; /* Increased font size for maximum legibility */
+            line-height: 1; /* Tighter line height for the text */
+            color: var(--hud-text);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            vertical-align: middle; /* Align text with icon */
+            font-weight: bold; /* Make text bold to stand out */
+        }
+
+        /* Shop Dropdown Styling */
+        #weapon-selection {
+            display: flex; gap: 10px;
+            margin-left: auto; /* Push this element to the far right */
+        }
+        .weapon-btn {
+            background: #555; /* Lighter background for better icon visibility */
+            color: #fff;
+            border: 2px solid #fff;
+            display: inline-flex; /* Use flex for horizontal alignment */
+            align-items: center; /* Vertically center icon and text */
+            gap: 8px; /* Space between icon and cost */
+            font-family: "Press Start 2P", monospace;
+            padding: 2px 10px; /* Reduced vertical padding to compensate for larger text */
+            line-height: 1; /* changed: tighter line height */
+            cursor: pointer;
+            transition: background-color 0.2s;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: rgba(255,255,255,0.08);
+            pointer-events: auto;
+        }
+        .weapon-btn-wrapper {
+            /* This wrapper increases the tap area on mobile without changing the button's appearance. */ 
+            /* We'll add padding here for touch, and the event listener will be on this wrapper. */
+            padding: 10px; /* Adds 10px of invisible tappable space around the button */
+            margin: -10px; /* Negative margin counteracts the padding to prevent layout shifts. */
+            display: inline-block; /* Needed for margin/padding to work correctly */
+            cursor: pointer;
+        }
+
+        .weapon-btn:hover { background: #777; } /* Adjust hover state for new background */
+        .weapon-btn.active { background: #4CAF50; color: #fff; border-color: #4CAF50; }
+
+        #start-screen {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            cursor: pointer;
+            font-size: 3em; /* Increased base font size */
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        #win-screen {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            font-size: 3em;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        #play-again-btn {
+            font-family: "Press Start 2P", monospace;
+            font-size: 0.8em;
+            padding: 20px 40px;
+            margin: 20px 0;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: 3px solid white;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        #play-again-btn:hover {
+            background: #66bb6a;
+            transform: scale(1.05);
+        }
+
+        .screen-nav { margin-top: 30px; display: flex; gap: 15px; }
+        .screen-nav a {
+            font-family: "Press Start 2P", monospace;
+            font-size: 0.4em;
+            color: #ccc; background: #222; padding: 10px 15px;
+            border-radius: 8px; text-decoration: none; transition: all 0.2s ease;
+        }
+        .screen-nav a:hover { background: var(--accent-color); color: white; }
+
+        #game-over-screen {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0; 
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            justify-content: flex-start;
+            padding-top: 5vh; /* Reduced space from the top */
+            align-items: center;
+            z-index: 300;
+            font-size: 3em;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        #win-screen h2 { margin-bottom: 15px; } /* Space below "You Win!" text */
+        #win-screen img {
+            margin: 0 0 15px 0; /* Reduced top/bottom margin for the image */
+        }
+
+        #retry-btn {
+            font-family: "Press Start 2P", monospace;
+            font-size: 0.8em;
+            padding: 20px 40px;
+            margin: 20px 0;
+            cursor: pointer;
+            background: #c0392b;
+            color: white;
+            border: 3px solid white;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        #retry-btn:hover { background: #e74c3c; transform: scale(1.05); }
+
+        /* Slightly larger touch-friendly HUD on coarse pointers */
+        @media (pointer: coarse) {
+            .weapon-btn { font-size: 11px; padding: 6px 8px; }
+            #hud { font-size: 14px; height: 48px; }
+            #crosshair { width: 36px; height: 36px; }
+        }
+
+        #game-notification {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4em;
+            color: rgba(255, 65, 65, 0.9);
+            text-shadow: 3px 3px 6px #000;
+            z-index: 15;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        #boss-dialogue {
+            position: absolute;
+            width: 500px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 4px solid black;
+            border-radius: 20px;
+            font-size: 1.8em;
+            color: #000;
+            text-align: center;
+            line-height: 1.4;
+            z-index: 16;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+    <!-- Scale wrapper holds the fixed logical game rectangle -->
+    <div id="scale-viewport">
+        <div id="game">
+            <div id="dog-health-container" class="health-container">
+                <div class="health-label">Champ's Health</div>
+                <div class="health-bar-outer">
+                    <div id="dog-health-bar" class="health-bar-inner"></div>
+                </div>
+            </div>
+            <div id="boss-health-container" class="health-container">
+                <div class="health-label">Big Daddy Gull Health</div>
+                <div class="health-bar-outer">
+                    <div id="boss-health-bar" class="health-bar-inner"></div>
+                </div>
+            </div>
+
+            <div class="sky"></div>
+            <div id="left-cloud" class="cloud"></div>
+            <div id="right-cloud" class="cloud"></div>
+            <div id="left-tree"></div>
+            <div id="center-tree"></div>
+            <div id="right-tree"></div>
+
+            <div id="foreground">
+                <div class="grass"></div>
+            </div>
+
+            <div id="dog"></div>
+
+            <div id="crosshair"></div>
+            <div id="shot-flash"></div>
+            <div id="machinegun-flash-container"></div>
+            <div id="flamethrower-ring"></div>
+            <div id="game-notification"></div>
+            <div id="boss-dialogue"></div>
+
+            <div id="hud">
+                <div class="score-display">SCORE: <span id="score">0</span></div>
+                <div class="shots-display">SHOT: <span id="shots">3</span></div>
+                <div class="round-display">
+                    R=<span id="round">1</span>
+                    <div id="bird-indicators" style="display: flex; margin-left: 20px;"></div>
+                </div>
+                <div class="stats-display">
+                    <div>HITS: <span id="total-hits">0</span></div>
+                    <div>ESCAPED: <span id="missed-birds">0</span></div>
+                </div>
+                <div id="weapon-selection">
+                    <div class="weapon-btn-wrapper">
+                        <button class="weapon-btn" data-weapon="pistol"><i class="weapon-icon pistol-icon"></i><span class="weapon-cost">(0)</span></button>
+                    </div>
+                    <div class="weapon-btn-wrapper">
+                        <button class="weapon-btn" data-weapon="machinegun"><i class="weapon-icon machinegun-icon"></i><span class="weapon-cost">(0)</span></button>
+                    </div>
+                    <div class="weapon-btn-wrapper">
+                        <button class="weapon-btn" data-weapon="rocket"><i class="weapon-icon rocket-icon"></i><span class="weapon-cost">(0)</span></button>
+                    </div>
+                    <div class="weapon-btn-wrapper">
+                        <button class="weapon-btn" data-weapon="flamethrower"><i class="weapon-icon flamethrower-icon"></i><span class="weapon-cost">(0)</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="start-screen">
+                <p>Seagull Hunt</p>
+                <p style="font-size: 0.7em; margin: 20px; max-width: 800px;">Shoot the pesky seagulls and UMD's mascot Champ will retrieve them for you! </p>
+                <div style="font-size: 0.5em; text-align: left; max-width: 80%; border: 1px solid #fff; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 10px;">Instructions:</h3>
+                    <ol style="margin-left: 20px;">
+                        <li>Aim your pointer and click to fire. (Or click the screen on mobile)</li>
+                        <li>The gulls speed up each round, and each round more of them get spooked.</li>
+                        <li>You can only miss 1/3 of the total spawned Gulls. (Grace Misses=3)</li>
+                        <li>Gain points to spend on additional weaponry. Reloading a selected weapon mid-round costs points.</li>
+                        <li>Maximum ammo increases periodically. One free reload of selected weapon on round start.</li>
+                        <li>Beware of the special levels, they contain a surprise--Can you beat the final boss at level 50??</li>
+                    </ol>
+                </div>
+                <p style="font-size: 0.6em; margin-top: 20px;">Click anywhere to Start</p>
+                <div class="screen-nav">
+                    <a href="index.html">Home</a>
+                    <a href="hobbies.html">Hobbies</a>
+                    <a href="discover.html">Discover Duluth & UMD</a>
+                    <a href="resume.html">Resume</a>
+                    <a href="career.html">Career Interests</a>
+                </div>
+            </div>
+
+            <div id="win-screen">
+                <h2>You Win!</h2>
+                <img src="PICTURES AND VIDEOS/victory-dog.png" alt="Victory!" style="max-width: 800px; max-height: 50%; border-radius: 15px;">
+                <button id="play-again-btn">Play Again</button>
+                <div class="screen-nav">
+                    <a href="index.html">Home</a>
+                    <a href="hobbies.html">Hobbies</a>
+                    <a href="discover.html">Discover Duluth & UMD</a>
+                    <a href="resume.html">Resume</a>
+                    <a href="career.html">Career Interests</a>
+                </div>
+            </div>
+
+            <div id="game-over-screen">
+                <h2>Game Over</h2>
+                <p id="game-over-reason"></p>
+                <button id="retry-btn">Try Again</button>
+                <div class="screen-nav">
+                    <a href="index.html">Home</a>
+                    <a href="hobbies.html">Hobbies</a>
+                    <a href="discover.html">Discover Duluth & UMD</a>
+                    <a href="resume.html">Resume</a>
+                    <a href="career.html">Career Interests</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Logical resolution constants
+        const LOGICAL_W = 1920;
+        const LOGICAL_H = 960;
+
+        const scaleViewport = document.getElementById('scale-viewport');
+        const game = document.getElementById('game');
+        const crosshair = document.getElementById('crosshair');
+        const shotFlash = document.getElementById('shot-flash');
+        const dog = document.getElementById('dog');
+        const gameNotificationEl = document.getElementById('game-notification');
+        const bossDialogueEl = document.getElementById('boss-dialogue');
+        const mgFlashContainer = document.getElementById('machinegun-flash-container');
+        const flamethrowerRingEl = document.getElementById('flamethrower-ring');
+        const gameOverScreenEl = document.getElementById('game-over-screen');
+        const winScreenEl = document.getElementById('win-screen');
+
+        const weaponSelectionEl = document.getElementById('weapon-selection');
+        const shotsEl = document.getElementById('shots');
+        const roundEl = document.getElementById('round');
+        const scoreEl = document.getElementById('score');
+        const birdIndicatorsEl = document.getElementById('bird-indicators');
+        const totalHitsEl = document.getElementById('total-hits');
+        const missedBirdsEl = document.getElementById('missed-birds');
+
+        const dogHealthContainerEl = document.getElementById('dog-health-container');
+        const dogHealthBarEl = document.getElementById('dog-health-bar');
+        const bossHealthContainerEl = document.getElementById('boss-health-container');
+        const bossHealthBarEl = document.getElementById('boss-health-bar');
+        // Game state
+        let score = 0;
+        let round = 1;
+        let shots = 3;
+        let birdsThisRound = [];
+        let totalHits = 0;
+        let missedBirds = 0;
+        let roundOverInProgress = false;
+        let canShoot = false;
+        let bigDaddyGull = null;
+        let gameOver = false;
+        let birdsToSpawnThisRound = 0;
+        let birdsSpawnedThisRound = 0;
+        let totalBirdsSpawned = 0; // Track total birds to calculate miss limit
+        let turdsThisRound = [];
+        let turdDropCooldown = 0;
+        let dogState = { x: 0, y: 0, vx: 7.5, health: 5, maxHealth: 5, state: 'idle' };
+
+
+
+        const weapons = {
+            pistol: { name: 'Pistol', cost: () => 0, ammo: (r, birds) => {
+                if (r === 50) { // Boss round
+                    return 15;
+                }
+                return birds + 1;
+            }, aoe: 24, auto: false, flash: { color: '#fff' } },
+            machinegun: {
+                name: 'Machine Gun',
+                cost: (r) => {
+                    if (r <= 9) return 1500;
+                    if (r <= 19) return 2500;
+                    if (r <= 34) return 3500;
+                    return 5000;
+                },
+                ammo: (r) => {
+                if (r >= 45) return 50;
+                if (r >= 40) return 40;
+                if (r >= 35) return 30;
+                return 20;
+                },
+                aoe: 24, auto: true, flash: { color: '#fff' }
+            },
+            rocket: {
+                name: 'Bazooka',
+                cost: (r) => {
+                    if (r <= 19) return 7500;
+                    if (r <= 29) return 10000;
+                    if (r <= 39) return 15000;
+                    return 20000;
+                },
+                ammo: (r) => {
+                if (r >= 46) return 8;
+                if (r >= 45) return 6;
+                if (r >= 40) return 5;
+                if (r >= 35) return 4;
+                if (r >= 22) return 3;
+                return 2;
+                },
+                aoe: 500, auto: false, flash: { color: 'orange', size: '500px' }
+            },
+            flamethrower: {
+                name: 'Flamethrower',
+                cost: (r) => {
+                    if (r <= 34) return 35000;
+                    if (r <= 44) return 45000;
+                    return 50000;
+                },
+                ammo: (r) => { // Initial: 50, Max: 80
+                if (r >= 48) return 80;
+                if (r >= 45) return 75;
+                if (r >= 40) return 70;
+                if (r >= 35) return 60;
+                return 50;
+                },
+                aoe: 380, auto: true, flash: { color: 'transparent' }
+            }
+        };
+        let currentWeapon = 'pistol';
+        let machineGunInterval = null;
+        let currentMousePos = { x: 0, y: 0 };
+        let flashTimeout = null;
+        let machineGunBurstCount = 0;
+        let flamethrowerInterval = null;
+        let flamethrowerAudioSource = null;
+
+        let musicSource = null;
+        let bossMusicSource = null;
+        // Web Audio API for performant sound
+        const isMobile = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+        let audioContext;
+        const audioBuffers = {};
+        const gainNodes = {};
+        let sfxDestination; // This will be the compressor on mobile, or the context destination on desktop
+
+        const playSound = (buffer, gainNode) => {
+            if (!audioContext || !buffer || !gainNode) return;
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(gainNode);
+            source.start(0);
+        };
+
+        const faceImages = [
+            'PICTURES AND VIDEOS/Carson1.png',
+            'PICTURES AND VIDEOS/Evan1.png',
+            'PICTURES AND VIDEOS/Nick1.png',
+            'PICTURES AND VIDEOS/Landen1.png'
+        ];
+
+        // Helper: map window coordinates to logical game coords
+        function clientToGame(clientX, clientY) {
+            const rect = scaleViewport.getBoundingClientRect();
+            const sx = rect.width / LOGICAL_W;
+            const sy = rect.height / LOGICAL_H;
+            const gx = (clientX - rect.left) / sx;
+            const gy = (clientY - rect.top) / sy;
+            return { x: gx, y: gy };
+        }
+
+        // Scale & center the wrapper to fit viewport while preserving aspect ratio
+        function applyScale() {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const scale = Math.min(vw / LOGICAL_W, vh / LOGICAL_H);
+            scaleViewport.style.transform = `scale(${scale})`;
+            const scaledW = LOGICAL_W * scale;
+            const scaledH = LOGICAL_H * scale;
+            const left = (vw - scaledW) / 2;
+            const top = (vh - scaledH) / 2;
+            scaleViewport.style.left = `${left}px`;
+            scaleViewport.style.top = `${top}px`;
+        }
+        window.addEventListener('resize', applyScale);
+        window.addEventListener('orientationchange', () => setTimeout(applyScale, 160));
+        applyScale();
+
+        // Initialize crosshair center in logical coordinates
+        crosshair.style.left = (LOGICAL_W / 2) + 'px';
+        crosshair.style.top = (LOGICAL_H / 2) + 'px';
+
+        // CORE GAME LOGIC (uses LOGICAL_W / LOGICAL_H for spawn/bounds)
+        function startRound() {
+            roundOverInProgress = false;
+            document.querySelectorAll('.seagull').forEach(el => el.remove());
+            if (bigDaddyGull && bigDaddyGull.el) {
+                bigDaddyGull.el.remove();
+                bigDaddyGull = null;
+            }
+            turdsThisRound.forEach(t => t.el.remove()); turdsThisRound = [];
+            if (round === 50) { startBossRound(); return; }
+
+            birdsSpawnedThisRound = 0;
+
+            let birdsToSpawn = 1;
+            if (round >= 45) birdsToSpawn = 40;
+            else if (round >= 40) birdsToSpawn = 20;
+            else if (round >= 35) birdsToSpawn = 10;
+            else if (round > 30) birdsToSpawn = 5;
+            else if (round >= 14) birdsToSpawn = 4;
+            else if (round >= 10) birdsToSpawn = 3;
+            else if (round >= 3) birdsToSpawn = 2;
+
+            birdsToSpawnThisRound = birdsToSpawn;
+            totalBirdsSpawned += birdsToSpawn;
+
+            shots = weapons[currentWeapon].ammo(round, birdsToSpawn);
+
+            roundEl.textContent = round;
+            birdsThisRound = [];
+            updateHUD();
+
+            dog.className = 'sniff';
+            setTimeout(() => {
+                dog.className = '';
+                canShoot = true;
+                for (let i = 0; i < birdsToSpawn; i++) {
+                    setTimeout(() => spawnSeagull(i, birdsToSpawn), i * 500);
+                }
+            }, 2000);
+        }
+
+        function startBossRound() {
+            shots = weapons[currentWeapon].ammo(round, 1);
+            roundEl.textContent = 'BOSS';
+            birdsThisRound = []; // No regular birds
+            updateHUD(1); // Show one indicator for the boss
+
+            // Stop main music and start boss music
+            if (musicSource) {
+                musicSource.stop();
+                musicSource = null;
+            }
+            if (audioContext && audioBuffers.bossMusic && !bossMusicSource) {
+                bossMusicSource = audioContext.createBufferSource();
+                bossMusicSource.buffer = audioBuffers.bossMusic;
+                bossMusicSource.loop = true;
+                bossMusicSource.connect(gainNodes.bossMusic);
+                bossMusicSource.start(0);
+            }
+
+
+            dog.className = 'sniff';
+            setTimeout(() => {
+                dog.className = '';
+                spawnBigDaddyGull();
+                // canShoot will be enabled after dialogue
+            }, 2000);
+        }
+
+        function spawnBigDaddyGull() {
+            bigDaddyGull = {
+                el: document.createElement('div'),
+                x: LOGICAL_W / 2,
+                y: -200, // Start off-screen top
+                vx: 0,
+                vy: 2, // Fly down
+                state: 'intro', // intro -> dialogue -> fly
+                stage: 1, // 1, 2, 3
+                health: 10, maxHealth: 10,
+                frame: 0,
+                isBoss: true,
+            };
+            bigDaddyGull.el.id = 'big-daddy-gull';
+            game.appendChild(bigDaddyGull.el);
+        }
+
+        function showBossDialogue() {
+            const dialogue = "Hey! You and your wrinkle-faced beast think its funny to hurt my babies?? Get my baby out of your mouth, dog! I'll crap on your fur!";
+            bossDialogueEl.textContent = dialogue;
+            const bossCenterY = bigDaddyGull.y - 120; // Position above boss
+            bossDialogueEl.style.left = `${bigDaddyGull.x}px`;
+            bossDialogueEl.style.top = `${bossCenterY}px`;
+            bossDialogueEl.style.opacity = '1';
+
+            // Prepare dog for battle
+            dogState.health = dogState.maxHealth;
+            dogHealthContainerEl.style.display = 'block';
+            updateDogHealthBar();
+            updateHUD(1);
+
+            // Prepare boss health bar
+            bossHealthContainerEl.style.display = 'block';
+            updateBossHealthBar();
+
+
+            setTimeout(() => {
+                bossDialogueEl.style.opacity = '0';
+                bigDaddyGull.state = 'fly';
+                bigDaddyGull.vx = 4; // Start moving
+                bigDaddyGull.vy = -2;
+                canShoot = true;
+
+                // Start the dog running now that the fight is on
+                dogState.state = 'running';
+                dog.className = 'running';
+            }, 6000); // Read time
+        }
+
+        function spawnSeagull(birdIndex, totalBirds) {
+            let vx, vy;
+            const baseSpeedX = 5;
+            const baseSpeedY = -3.5;
+
+            let speedMultiplier = 1.0;
+            if (round >= 10) { // Start increasing speed earlier
+                const maxSpeedMultiplier = 3.0; // Gulls get much faster
+                const levelsPast9 = round - 9; // Start from round 10
+                const progressToMax = Math.min(1, levelsPast9 / 16); // Reach max speed by round 25 (9 + 16)
+                speedMultiplier = 1 + (progressToMax * (maxSpeedMultiplier - 1));
+            }
+            const isSpecialRound = round === 15 || round === 30;
+            if (isSpecialRound) speedMultiplier *= 1.25; // Slowed down face rounds for better visibility
+
+            if (round >= 14) {
+                let birdSpeedTier = 1.0;
+                if (birdIndex === 1) birdSpeedTier = 1.5;
+                if (birdIndex >= 2) birdSpeedTier = 2.0;
+                vx = (Math.random() > 0.5 ? 1 : -1) * baseSpeedX * birdSpeedTier * speedMultiplier;
+                vy = baseSpeedY * birdSpeedTier * speedMultiplier;
+            } else if (round > 10) {
+                // For rounds 11-13, ensure a minimum horizontal speed to prevent near-vertical flight.
+                const isElite = Math.random() < 0.25;
+                const direction = Math.random() > 0.5 ? 1 : -1;
+                if (isElite) {
+                    const baseVx = 4 + Math.random() * 4; // Min speed of 4, max of 8
+                    vx = direction * baseVx;
+                    vy = -6 - Math.random() * 5;
+                } else {
+                    const baseVx = 2 + Math.random() * 3; // Min speed of 2, max of 5
+                    vx = direction * baseVx;
+                    vy = -4 - Math.random() * 4;
+                }
+                vx *= speedMultiplier;
+                vy *= speedMultiplier;
+            } else {
+                vx = (Math.random() > 0.5 ? 1 : -1) * (baseSpeedX + (round * 0.1));
+                vy = baseSpeedY - (round * 0.2);
+                if (round === 7 && birdIndex === 1) vx *= 1.8;
+                else if (round >= 5 && birdIndex === 1) vx *= 1.2;
+                if (round >= 10 && birdIndex === 1) vx *= 1.2;
+                if (round >= 10 && birdIndex === 2) vx *= 1.3;
+            }
+
+            const seagull = {
+                el: document.createElement('div'),
+                x: Math.random() * (LOGICAL_W - 200) + 100,
+                y: LOGICAL_H * 0.7,
+                vx: vx,
+                vy: vy,
+                state: 'fly',
+                frame: 0,
+                bounces: 0,
+                isSpecial: isSpecialRound,
+                rotation: 0
+            };
+            seagull.el.className = 'seagull';
+            game.appendChild(seagull.el);
+            birdsThisRound.push(seagull);
+            birdsSpawnedThisRound++;
+
+            if (isSpecialRound) {
+                seagull.el.classList.add('face-bird');
+                const faceImage = faceImages[birdIndex % faceImages.length];
+                seagull.el.style.backgroundImage = `url('${faceImage}')`;
+            } else {
+                seagull.el.style.backgroundImage = `url('PICTURES AND VIDEOS/seagull-sprite.png')`;
+            }
+        }
+
+        function gameLoop() {
+            if (gameOver) return; // Stop the game loop if the game is over
+
+            if (bigDaddyGull) updateBigDaddyGull();
+
+            if (dogState.state === 'running') updateDog();
+
+            updateTurds();
+
+            birdsThisRound.forEach(bird => {
+                if (bird.state === 'fly') {
+                    bird.x += bird.vx;
+                    bird.y += bird.vy;
+
+                    if (bird.x < -72) { bird.x = -72; bird.vx *= -1; }
+                    if (bird.x > LOGICAL_W - 72) { bird.x = LOGICAL_W - 72; bird.vx *= -1; }
+                    if (bird.y < -72) { bird.y = -72; bird.vy *= -1; }
+
+                    const grassLine = LOGICAL_H * 0.75;
+                    if (bird.y + bird.el.offsetHeight > grassLine + 30 && bird.vy > 0) {
+                        if (bird.bounces < 2) { bird.vy *= -1; bird.bounces++; }
+                    }
+
+                    if (bird.y > LOGICAL_H) {
+                        bird.state = 'escaped';
+                        missedBirds++;
+                        checkRoundOver();
+                        bird.el.remove();
+                    }
+
+                    bird.frame = (bird.frame + 1) % 20;
+                    if (!bird.isSpecial) bird.el.className = `seagull fly-${Math.floor(bird.frame / 10)}`;
+                    let transformString = `translate(${bird.x}px, ${bird.y}px) scaleX(${bird.vx > 0 ? 1 : -1})`;
+                    if (bird.isSpecial) {
+                        bird.rotation = (bird.rotation + 5) % 360;
+                        transformString += ` rotate(${bird.rotation}deg)`;
+                    }
+                    bird.el.style.transform = transformString;
+
+                    // Randomly play a sound with a low probability
+                    if (Math.random() < 0.004) { // Slightly increased from original for more ambience
+                        const seagullSounds = ['seagull1', 'seagull2', 'seagull3', 'seagull4'];
+                        const randomSoundName = seagullSounds[Math.floor(Math.random() * seagullSounds.length)];
+                        const buffer = audioBuffers[randomSoundName];
+                        const gainNode = gainNodes.seagull;
+
+                        if (audioContext && buffer && gainNode) {
+                            const source = audioContext.createBufferSource();
+                            source.buffer = buffer;
+                            source.connect(gainNode);
+                            source.start(0);
+                        }
+                    }
+                }
+            });
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateDog() {
+            dogState.x += dogState.vx;
+            const dogWidth = dog.offsetWidth;
+            if (dogState.x < 0) {
+                dogState.x = 0;
+                dogState.vx *= -1;
+                dog.style.transform = 'scaleX(1)';
+            }
+            if (dogState.x > LOGICAL_W - dogWidth) {
+                dogState.x = LOGICAL_W - dogWidth;
+                dogState.vx *= -1;
+                dog.style.transform = 'scaleX(-1)';
+            }
+            dog.style.left = `${dogState.x}px`;
+        }
+
+        function updateTurds() {
+            turdsThisRound.forEach((turd, index) => {
+                turd.y += turd.vy;
+                turd.el.style.top = `${turd.y}px`;
+
+                // Check for collision with dog
+                const dogRect = dog.getBoundingClientRect();
+                const turdRect = turd.el.getBoundingClientRect();
+
+                if (turdRect.right > dogRect.left && turdRect.left < dogRect.right &&
+                    turdRect.bottom > dogRect.top && turdRect.top < dogRect.bottom) {
+                    
+                    dogState.health = Math.max(0, dogState.health - 1);
+                    updateDogHealthBar();
+                    updateHUD(1);
+                    playSound(audioBuffers.hit, gainNodes.hit);
+                    turd.el.remove();
+                    turdsThisRound.splice(index, 1);
+
+                    if (dogState.health <= 0) {
+                        showGameOverScreen("You failed to protect Champ!");
+                    }
+                    return; // Stop processing this turd
+                }
+
+                // Remove if off-screen
+                if (turd.y > LOGICAL_H) {
+                    turd.el.remove();
+                    turdsThisRound.splice(index, 1);
+                }
+            });
+        }
+
+        function updateDogHealthBar() {
+            const percentage = (dogState.health / dogState.maxHealth) * 100;
+            dogHealthBarEl.style.width = `${percentage}%`;
+        }
+
+        function updateBossHealthBar() {
+            const percentage = (bigDaddyGull.health / bigDaddyGull.maxHealth) * 100;
+            bossHealthBarEl.style.width = `${percentage}%`;
+        }
+
+        function updateFlamethrowerDamage() {
+            if (!canShoot || shots <= 0 || roundOverInProgress) {
+                pointerEnd(); // Stop firing if state changes
+                return;
+            }
+
+            shots--; // Consume ammo over time
+            updateHUD(bigDaddyGull ? 1 : birdsThisRound.length);
+            if (shots <= 0) {
+                pointerEnd(); // Stop firing if out of ammo
+                return;
+            }
+
+            const weapon = weapons.flamethrower;
+            const hitRadius = weapon.aoe / 2;
+            const gamePos = clientToGame(currentMousePos.clientX, currentMousePos.clientY);
+
+            // Damage regular seagulls
+            birdsThisRound.forEach(bird => {
+                if (bird.state !== 'fly') return;
+
+                const birdCenterX = bird.x + bird.el.offsetWidth / 2;
+                const birdCenterY = bird.y + bird.el.offsetHeight / 2;
+                const distance = Math.hypot(gamePos.x - birdCenterX, gamePos.y - birdCenterY);
+
+                if (distance <= hitRadius + (bird.el.offsetWidth / 3)) {
+                    // Flamethrower does damage over time, but for simplicity, we'll have it kill gulls instantly.
+                    // A more advanced version could give birds health and apply damage per tick.
+                    if (bird.state === 'fly') {
+                        handleBirdHit(bird);
+                    }
+                }
+            });
+
+            // Damage turds
+            turdsThisRound.forEach((turd, index) => {
+                const turdCenterX = turd.x + turd.el.offsetWidth / 2;
+                const turdCenterY = turd.y + turd.el.offsetHeight / 2;
+                const distance = Math.hypot(gamePos.x - turdCenterX, gamePos.y - turdCenterY);
+
+                if (distance <= hitRadius + (turd.el.offsetWidth / 2)) {
+                    turd.el.remove();
+                    turdsThisRound.splice(index, 1);
+                    score += 10; // Small score for shooting a turd
+                    playSound(audioBuffers.seagullHit, gainNodes.seagullHit); // Re-use gull hit sound
+                    updateHUD(bigDaddyGull ? 1 : birdsThisRound.length);
+                }
+            });
+
+            // Damage the boss
+            if (bigDaddyGull && bigDaddyGull.el && bigDaddyGull.state === 'fly') {
+                const boss = bigDaddyGull;
+                const bossCenterX = boss.x + 170 / 2;
+                const bossCenterY = boss.y + 170 / 2;
+                const distance = Math.hypot(gamePos.x - bossCenterX, gamePos.y - bossCenterY);
+                const bossHitRadius = 170 / 3;
+
+                if (distance <= hitRadius + bossHitRadius) {
+                    boss.health--;
+                    playSound(audioBuffers.hit, gainNodes.hit);
+                    updateBossHealthBar(); // Update the health bar display
+                    totalHits++;
+                    score += 50; // Less score per tick than a direct hit
+                    updateHUD(1); // Update the score on the HUD
+
+                    if (boss.health <= 0) {
+                        playSound(audioBuffers.bossDeath, gainNodes.bossDeath);
+                        if (boss.stage === 1) {
+                            boss.stage = 2; // Stage 2
+                            boss.health = 30;
+                            boss.maxHealth = 30;
+                        } else if (boss.stage === 2) {
+                            boss.stage = 3; // Stage 3
+                            boss.health = 55;
+                            boss.maxHealth = 55;
+                        } else if (boss.stage === 3) {
+                            // Final kill
+                            boss.state = 'falling';
+                            boss.el.style.transform = `scaleX(${boss.vx > 0 ? 1 : -1})`;
+                            boss.el.style.left = `${boss.x}px`;
+                            boss.el.style.top = `${boss.y}px`;
+                            boss.el.classList.add('falling');
+                            
+                            requestAnimationFrame(() => {
+                                boss.el.style.transition = 'top 0.8s linear';
+                                boss.el.style.top = `${LOGICAL_H - 240 - 120}px`;
+                            });
+                            
+                            setTimeout(() => { boss.state = 'dead'; boss.el.classList.remove('falling'); checkRoundOver(); }, 800);
+                        }
+                        updateBossHealthBar(); // Refresh the bar for the new stage
+                    }
+                }
+            }
+        }
+
+        function updateBigDaddyGull() {
+            const boss = bigDaddyGull;
+            if (!boss || !boss.el) return;
+
+            // State machine for the boss
+            if (boss.state === 'intro') {
+                boss.y += boss.vy;
+                if (boss.y >= LOGICAL_H / 3) {
+                    boss.y = LOGICAL_H / 3;
+                    boss.state = 'dialogue';
+                    showBossDialogue();
+                }
+            } else if (boss.state === 'fly') {
+                // Update speed based on stage
+                const speedMultipliers = { 1: 2.0, 2: 4.0, 3: 5.5 };
+                const speed = speedMultipliers[boss.stage];
+
+                boss.x += boss.vx * speed;
+                boss.y += boss.vy * speed;
+
+                // Wall bounces (no bottom barrier)
+                if (boss.x < 0) { boss.x = 0; boss.vx *= -1; }
+                if (boss.x > LOGICAL_W - 170) { boss.x = LOGICAL_W - 170; boss.vx *= -1; }
+                if (boss.y < 0 && boss.vy < 0) { boss.y = 0; boss.vy *= -1; }
+                // Bounce off the grass line
+                if (boss.y + 170 > LOGICAL_H - 240 && boss.vy > 0) { boss.y = LOGICAL_H - 240 - 170; boss.vy *= -1; }
+
+                // Turd dropping logic
+                if (turdDropCooldown > 0) turdDropCooldown--;
+                if (turdDropCooldown <= 0 && Math.abs((boss.x + 85) - (dogState.x + dog.offsetWidth / 2)) < 50) {
+                    dropTurd(boss.x + 85, boss.y + 170);
+                    turdDropCooldown = 60; // 1 second cooldown
+                }
+                // Randomly play a sound with a low probability
+                if (Math.random() < 0.008) { // Slightly reduced probability
+                    const buffer = audioBuffers.bossGull;
+                    const gainNode = gainNodes.bossGull;
+
+                    if (audioContext && buffer && gainNode) {
+                        const source = audioContext.createBufferSource();
+                        source.buffer = buffer;
+                        source.connect(gainNode);
+                        source.start(0);
+                    }
+                }
+
+            } else if (boss.state === 'dead') {
+                // Sits on ground, do nothing
+            } else if (boss.state === 'exploding') {
+                // Animation handled by CSS, then remove
+            }
+
+            // Update sprite frame
+            boss.frame = (boss.frame + 1) % 20;
+            const wingFrame = Math.floor(boss.frame / 10); // 0 or 1
+            let bgX = 0, bgY = 0;
+
+            if (boss.state === 'fly' || boss.state === 'intro' || boss.state === 'dialogue') {
+                if (boss.stage === 1) bgX = wingFrame * 170; // Frames 1-2
+                else if (boss.stage === 2) bgX = (wingFrame + 2) * 170; // Frames 3-4
+                else if (boss.stage === 3) { bgY = 170; bgX = wingFrame * 170; } // Frames 5-6
+            } else if (boss.state === 'dead') {
+                bgY = 170; bgX = 2 * 170; // Frame 7
+            } else if (boss.state === 'exploding') {
+                bgY = 170; bgX = 3 * 170; // Frame 8
+            }
+
+            if (boss.state === 'fly' || boss.state === 'intro' || boss.state === 'dialogue') {
+                boss.el.style.backgroundPosition = `-${bgX}px -${bgY}px`;
+                let transformString = `translate(${boss.x}px, ${boss.y}px) scaleX(${boss.vx > 0 ? 1 : -1})`;
+                boss.el.style.transform = transformString;
+            } else if (boss.state === 'dead' || boss.state === 'exploding') {
+                boss.el.style.backgroundPosition = `-${bgX}px -${bgY}px`;
+            } else if (boss.state === 'falling') {
+                // Do not update backgroundPosition, let it be frozen from the flying state
+            }
+        }
+
+        function dropTurd(x, y) {
+            const turd = {
+                el: document.createElement('div'),
+                x: x,
+                y: y,
+                vy: 4, // Slow fall speed
+            };
+            turd.el.className = 'turd';
+            turd.el.style.left = `${x}px`;
+            turd.el.style.top = `${y}px`;
+            game.appendChild(turd.el);
+            turdsThisRound.push(turd);
+            playSound(audioBuffers.ploop, gainNodes.ploop);
+        }
+        function checkRoundOver() {
+            // Boss round has its own end condition
+            if (bigDaddyGull) {
+                if (bigDaddyGull.state === 'dead') { // Check if the boss is dead to trigger dog
+                    if (roundOverInProgress) return;
+                    roundOverInProgress = true;
+                    canShoot = false;
+
+                    // Immediately stop any continuous firing sounds when the round ends
+                    if (pointerDown) pointerEnd();
+
+                    dogState.state = 'idle'; // Stop the dog
+                    dog.className = '';
+                    dogHealthContainerEl.style.display = 'none';
+                    bossHealthContainerEl.style.display = 'none';
+
+                    dogRetrieveBoss(bigDaddyGull);
+                    // Game ends here, no more rounds. The win screen is shown in dogRetrieveBoss.
+                }
+                return;
+            }
+
+            // Check if all birds for the round have spawned yet. If not, it's too early to end.
+            if (birdsSpawnedThisRound < birdsToSpawnThisRound) {
+                return;
+            }
+
+
+            const birdsAccountedFor = birdsThisRound.length > 0 && birdsThisRound.every(b => b.state !== 'fly');
+            if (birdsAccountedFor) {
+                if (roundOverInProgress) return;
+                roundOverInProgress = true;
+                canShoot = false;
+
+                // Immediately stop any continuous firing sounds when the round ends
+                if (pointerDown) pointerEnd();
+
+                const shotBirds = birdsThisRound.filter(b => b.state !== 'fly' && b.state !== 'escaped');
+                const escapedBirds = birdsThisRound.filter(b => b.state === 'escaped');
+                if (escapedBirds.length > 0) dogLaugh();
+
+                // Game over if player misses more than 1/2 of all birds spawned so far (with a minimum of 5)
+                const missedBirdsLimit = Math.max(3, Math.floor(totalBirdsSpawned / 3)); // Stricter miss limit
+
+                if (missedBirds >= missedBirdsLimit) {
+                    showGameOverScreen("Too many birds escaped!");
+                    return; // Stop further round progression
+                }
+
+                setTimeout(() => {
+                    shotBirds.forEach(bird => dogRetrieve(bird));
+                    setTimeout(() => { round++; startRound(); }, 2500);
+                }, 1000);
+            }
+        }
+
+        function fireShot(e) {
+            if (!canShoot || shots <= 0 || roundOverInProgress) return;
+
+            const weapon = weapons[currentWeapon];
+
+            if (currentWeapon === 'machinegun') {
+                playSound(audioBuffers.machinegun, gainNodes.machinegun);
+                machineGunBurstCount++;
+            } else if (currentWeapon === 'pistol') {
+                playSound(audioBuffers.pistol, gainNodes.pistol);
+            } else if (currentWeapon === 'rocket') {
+                playSound(audioBuffers.rocket, gainNodes.rocket);
+            }
+
+            shots--;
+            updateHUD(bigDaddyGull ? 1 : birdsThisRound.length);
+
+            const clientX = (typeof e.clientX === 'number') ? e.clientX : (e.x ?? 0);
+            const clientY = (typeof e.clientY === 'number') ? e.clientY : (e.y ?? 0);
+            const gamePos = clientToGame(clientX, clientY);
+            const shotX = gamePos.x;
+            const shotY = gamePos.y;
+
+            // --- Muzzle Flash Logic ---
+            if (weapon.name === 'Machine Gun') {
+                const flashEl = document.createElement('div');
+                flashEl.className = 'flash';
+                mgFlashContainer.appendChild(flashEl);
+                setTimeout(() => flashEl.remove(), 120); // Clean up the element after animation
+                // For machine gun, we don't use the shared shotFlash logic below
+                
+            } else {
+
+            // Muzzle flash in logical coords
+            shotFlash.style.background = weapon.flash.color;
+            if (weapon.name === 'Bazooka') {
+                // Force re-trigger of the animation by removing and re-adding the class
+                shotFlash.classList.remove('fireball');
+                void shotFlash.offsetWidth; // This forces a browser reflow
+
+                shotFlash.classList.add('fireball');
+                shotFlash.style.opacity = '1';
+                shotFlash.style.width = weapon.flash.size;
+                shotFlash.style.height = weapon.flash.size;
+                shotFlash.style.borderRadius = '50%';
+                shotFlash.style.left = (shotX - parseInt(weapon.flash.size) / 2) + 'px'; // Center on shot
+                shotFlash.style.top = (shotY - parseInt(weapon.flash.size) / 2) + 'px'; // Center on shot
+            } else {
+                shotFlash.style.opacity = '0.7';
+                shotFlash.style.width = LOGICAL_W + 'px';
+                shotFlash.style.height = LOGICAL_H + 'px';
+                shotFlash.style.left = '0';
+                shotFlash.style.top = '0';
+                shotFlash.style.borderRadius = '0';
+            }
+            shotFlash.style.display = 'block';
+            const flashDuration = weapon.name === 'Bazooka' ? 400 : 120; // Pistol flash duration
+
+            // Clear any existing flash timeout to prevent it from hiding the new one prematurely
+            if (flashTimeout) clearTimeout(flashTimeout);
+
+            flashTimeout = setTimeout(() => {
+                shotFlash.style.display = 'none';
+                shotFlash.classList.remove('fireball');
+                shotFlash.style.opacity = '0';
+            }, flashDuration);
+            }
+
+            let hit = false;
+            const hitRadius = weapon.aoe / 2;
+
+            // Boss Hit Detection
+            if (bigDaddyGull && bigDaddyGull.el && bigDaddyGull.state === 'fly') {
+                const boss = bigDaddyGull;
+                const bossCenterX = boss.x + 170 / 2;
+                const bossCenterY = boss.y + 170 / 2;
+                const distance = Math.hypot(shotX - bossCenterX, shotY - bossCenterY);
+                const bossHitRadius = 170 / 3;
+
+                if (distance <= hitRadius + bossHitRadius) {
+                    hit = true;
+                    boss.health--;
+                    playSound(audioBuffers.hit, gainNodes.hit);
+                    totalHits++;
+                    score += 1000;
+
+                    updateBossHealthBar();
+
+                    if (boss.health <= 0) {
+                        playSound(audioBuffers.bossDeath, gainNodes.bossDeath);
+                        if (boss.stage === 1) {
+                            boss.stage = 2; // Stage 2
+                            boss.health = 30;
+                            boss.maxHealth = 30;
+                        } else if (boss.stage === 2) {
+                            boss.stage = 3; // Stage 3
+                            boss.health = 55;
+                            boss.maxHealth = 55;
+                        } else if (boss.stage === 3) {
+                            // Final kill
+                            boss.state = 'falling'; // Change state to falling first
+                            // Set position explicitly so he falls from where he was shot
+                            boss.el.style.transform = `scaleX(${boss.vx > 0 ? 1 : -1})`; // Keep horizontal flip, remove translate
+                            boss.el.style.left = `${boss.x}px`;
+                            boss.el.style.top = `${boss.y}px`;
+                            boss.el.classList.add('falling');
+                            
+                            // Force a reflow before applying the transition's end state
+                            requestAnimationFrame(() => {
+                                boss.el.style.transition = 'top 0.8s linear';
+                                boss.el.style.top = `${LOGICAL_H - 240 - 120}px`; // Lowered to rest on the grass properly
+                            });
+                            
+                            setTimeout(() => {
+                                boss.state = 'dead'; // Now he is dead on the ground
+                                boss.el.classList.remove('falling'); // Stop spinning
+                                checkRoundOver(); // Trigger dog retrieval
+                            }, 800); // Wait for fall to complete
+                        }
+                        updateBossHealthBar(); // Update bar for new stage
+                    }
+                }
+            }
+
+            // Turd Hit Detection
+            turdsThisRound.forEach((turd, index) => {
+                const turdCenterX = turd.x + turd.el.offsetWidth / 2;
+                const turdCenterY = turd.y + turd.el.offsetHeight / 2;
+                const distance = Math.hypot(shotX - turdCenterX, shotY - turdCenterY);
+                const turdHitRadius = turd.el.offsetWidth / 2;
+
+                if (distance <= hitRadius + turdHitRadius) {
+                    hit = true;
+                    turd.el.remove();
+                    turdsThisRound.splice(index, 1);
+                    score += 10;
+                    playSound(audioBuffers.seagullHit, gainNodes.seagullHit);
+                    updateHUD(bigDaddyGull ? 1 : birdsThisRound.length);
+                }
+            });
+
+            birdsThisRound.forEach(bird => {
+                if (bird.state !== 'fly') return;
+                const bRect = bird.el.getBoundingClientRect();
+                const rect = scaleViewport.getBoundingClientRect();
+                const scaleX = rect.width / LOGICAL_W;
+                const scaleY = rect.height / LOGICAL_H;
+                const birdCenterX = (bRect.left - rect.left) / scaleX + bRect.width / (2 * scaleX);
+                const birdCenterY = (bRect.top - rect.top) / scaleY + bRect.height / (2 * scaleY);
+
+                const distance = Math.hypot(shotX - birdCenterX, shotY - birdCenterY);
+                const seagullHitRadius = (bRect.width / scaleX) / 3;
+                if (distance <= hitRadius + seagullHitRadius) {
+                    hit = true;
+                    playSound(audioBuffers.seagullHit, gainNodes.seagullHit);
+                    totalHits++;
+                    bird.state = 'shot';
+                    bird.el.style.left = bird.x + 'px';
+                    bird.el.style.top = bird.y + 'px';
+                    let transform = `scaleX(${bird.vx > 0 ? 1 : -1})`;
+                    if (bird.isSpecial) transform += ` rotate(${bird.rotation}deg)`;
+                    bird.el.style.transform = transform;
+                    if (!bird.isSpecial) bird.el.className = 'seagull shot';
+                    score += 500;
+                    setTimeout(() => {
+                        bird.state = 'falling';
+                        if (!bird.isSpecial) bird.el.className = 'seagull shot falling';
+                        else bird.el.classList.add('falling');
+                        bird.el.style.transform = '';
+                        const finalTop = LOGICAL_H * 0.75 - bird.el.offsetHeight + 50;
+                        bird.el.style.transition = 'top 0.8s linear';
+                        bird.el.style.top = `${finalTop}px`;
+                        setTimeout(() => {
+                            bird.state = 'dead';
+                            if (bird.isSpecial) bird.el.className = 'seagull falling face-bird';
+                            else bird.el.className = 'seagull dead-ground';
+                            bird.el.style.transform = `scaleX(${bird.vx > 0 ? 1 : -1})`;
+                            checkRoundOver();
+                        }, 800);
+                    }, 100);
+                }
+            });
+
+            if (hit || shots <= 0) {
+                if (shots <= 0) {
+                    birdsThisRound.forEach(b => { if (b.state === 'fly') b.vy = -15; });
+                }
+            }
+            updateHUD(bigDaddyGull ? 1 : birdsThisRound.length);
+        }
+
+        function handleBirdHit(bird) {
+            // This function contains the logic for when a bird is successfully hit.
+            // It's called from fireShot for single-shot weapons and from updateFlamethrowerDamage.
+            if (bird.state !== 'fly') return; // Don't hit a bird that's already shot
+
+            playSound(audioBuffers.seagullHit, gainNodes.seagullHit);
+            totalHits++;
+            bird.state = 'shot';
+            bird.el.style.left = bird.x + 'px';
+            bird.el.style.top = bird.y + 'px';
+            let transform = `scaleX(${bird.vx > 0 ? 1 : -1})`;
+            if (bird.isSpecial) transform += ` rotate(${bird.rotation}deg)`;
+            bird.el.style.transform = transform;
+            if (!bird.isSpecial) bird.el.className = 'seagull shot';
+            score += 500;
+            setTimeout(() => {
+                bird.state = 'falling';
+                if (!bird.isSpecial) bird.el.className = 'seagull shot falling';
+                else bird.el.classList.add('falling');
+                bird.el.style.transform = '';
+                const finalTop = LOGICAL_H * 0.75 - bird.el.offsetHeight + 50;
+                bird.el.style.transition = 'top 0.8s linear';
+                bird.el.style.top = `${finalTop}px`;
+                setTimeout(() => {
+                    bird.state = 'dead';
+                    if (bird.isSpecial) bird.el.className = 'seagull falling face-bird';
+                    else bird.el.className = 'seagull dead-ground';
+                    bird.el.style.transform = `scaleX(${bird.vx > 0 ? 1 : -1})`;
+                    checkRoundOver();
+                }, 800);
+            }, 100);
+
+            // Update HUD after the hit is registered
+            updateHUD(bigDaddyGull ? 1 : birdsThisRound.length);
+        }
+
+        function dogLaugh() {
+            dog.className = 'laugh';
+            if (audioContext && audioBuffers.dogLaugh && gainNodes.dogLaugh) {
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffers.dogLaugh;
+                source.connect(gainNodes.dogLaugh);
+                source.start(0);
+            }
+            setTimeout(() => { dog.className = ''; }, 2000);
+        }
+
+        function dogRetrieveBoss(boss) {
+            dog.className = 'retrieve'; // Make sure dog has the bird in his mouth
+            const bossRect = boss.el.getBoundingClientRect();
+            dog.style.transform = `translate(${bossRect.left - dog.getBoundingClientRect().left}px, -120px)`;
+            setTimeout(() => {
+                // Dog reaches boss, boss explodes
+                boss.state = 'exploding';
+                playSound(audioBuffers.bossPoof, gainNodes.bossPoof);
+                setTimeout(() => {
+                    boss.state = 'removed';
+                    boss.el.remove();
+                    setTimeout(() => {
+                        showWinScreen(); // Show the win screen after the explosion and a short delay
+                    }, 500);
+                }, 500); // Explosion duration
+            }, 1000);
+        }
+
+        function dogRetrieve(bird) {
+            dog.className = 'retrieve';
+            const birdRect = bird.el.getBoundingClientRect();
+            dog.style.transform = `translate(${birdRect.left - dog.getBoundingClientRect().left}px, -120px)`;
+            setTimeout(() => {
+                bird.el.remove();
+                dog.style.transform = `translate(${birdRect.left - dog.getBoundingClientRect().left}px, 0)`;
+                setTimeout(() => dog.className = '', 500);
+            }, 1000);
+        }
+
+        function updateWeaponCosts() {
+            document.querySelectorAll('.weapon-btn').forEach(btn => {
+                const weaponKey = btn.dataset.weapon;
+                const weapon = weapons[weaponKey];
+                if (weapon) {
+                    const cost = weapon.cost(round);
+                    btn.querySelector('.weapon-cost').textContent = `(${cost})`;
+                }
+            });
+        }
+
+        function updateBirdIndicatorsLayout(birdsCount) {
+            birdIndicatorsEl.style.display = 'flex'; // Default to flex (single row)
+            birdIndicatorsEl.style.flexWrap = 'nowrap';
+            birdIndicatorsEl.style.gap = 'initial';
+            birdIndicatorsEl.style.gridTemplateColumns = 'initial';
+
+            if (birdsCount === 20) {
+                birdIndicatorsEl.style.display = 'grid';
+                birdIndicatorsEl.style.gridTemplateColumns = 'repeat(10, 1fr)';
+                birdIndicatorsEl.style.gap = '2px';
+            } else if (birdsCount === 40) {
+                birdIndicatorsEl.style.display = 'grid';
+                birdIndicatorsEl.style.gridTemplateColumns = 'repeat(20, 1fr)';
+                birdIndicatorsEl.style.gap = '2px';
+            }
+        }
+        function updateHUD() {
+            shotsEl.textContent = shots;
+            scoreEl.textContent = String(score).padStart(4, '0');
+            totalHitsEl.textContent = totalHits;
+            missedBirdsEl.textContent = missedBirds;
+            birdIndicatorsEl.innerHTML = '';
+
+            updateBirdIndicatorsLayout(bigDaddyGull ? 1 : birdsToSpawnThisRound);
+
+            const birdsForHUD = bigDaddyGull ? 1 : birdsToSpawnThisRound;
+
+            if (bigDaddyGull) {
+                const indicator = document.createElement('div');
+                indicator.className = 'bird-indicator hit'; // Always show as a target
+                birdIndicatorsEl.appendChild(indicator);
+            } else {
+                const hits = birdsThisRound.filter(b => b.state !== 'fly' && b.state !== 'escaped').length;
+                for (let i = 0; i < birdsForHUD; i++) {
+                    const indicator = document.createElement('div');
+                    indicator.className = 'bird-indicator';
+                    if (i < hits) indicator.classList.add('hit');
+                    birdIndicatorsEl.appendChild(indicator);
+                }
+            }
+
+            updateWeaponCosts();
+        }
+
+        function updateActiveWeaponButton() {
+            document.querySelectorAll('.weapon-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.weapon === currentWeapon) btn.classList.add('active');
+            });
+        }
+
+        // Input: mouse + touch mapped into logical coords
+        let pointerDown = false;
+        let currentPointer = { x: LOGICAL_W / 2, y: LOGICAL_H / 2 };
+
+        function setCrosshairFromClient(clientX, clientY) {
+            // Store the raw clientX/Y for use by intervals
+            currentMousePos.clientX = clientX;
+            currentMousePos.clientY = clientY;
+
+            const g = clientToGame(clientX, clientY);
+            currentPointer.x = g.x;
+            currentPointer.y = g.y;
+            crosshair.style.left = `${g.x}px`;
+            crosshair.style.top = `${g.y}px`;
+            flamethrowerRingEl.style.left = `${g.x}px`;
+            flamethrowerRingEl.style.top = `${g.y}px`;
+        }
+
+        function pointerStart(clientX, clientY) {
+            if (!canShoot || roundOverInProgress) return;
+
+            pointerDown = true;
+            setCrosshairFromClient(clientX, clientY);
+            const fakeEvent = { clientX: clientX, clientY: clientY };
+
+            // --- WEAPON FIRING LOGIC ---
+            if (currentWeapon === 'flamethrower') {
+                // Only start firing if there is ammo
+                if (shots <= 0) return;
+
+                flamethrowerRingEl.style.display = 'block';
+                if (flamethrowerInterval) clearInterval(flamethrowerInterval);
+                flamethrowerInterval = setInterval(updateFlamethrowerDamage, 50); // Damage tick rate
+
+                // Start looping audio
+                if (audioContext && audioBuffers.flamethrower && !flamethrowerAudioSource) {
+                    flamethrowerAudioSource = audioContext.createBufferSource();
+                    flamethrowerAudioSource.buffer = audioBuffers.flamethrower;
+                    flamethrowerAudioSource.loop = true;
+                    flamethrowerAudioSource.connect(gainNodes.flamethrower);
+                    flamethrowerAudioSource.start(0);
+                }
+            } else if (currentWeapon === 'machinegun') {
+                machineGunBurstCount = 0; // Reset burst counter
+                if (machineGunInterval) clearInterval(machineGunInterval);
+                fireShot(fakeEvent);
+                if (shots > 0) { // Only set interval if we have ammo to continue
+                    machineGunInterval = setInterval(() => {
+                        const rect = scaleViewport.getBoundingClientRect();
+                        fireShot({ clientX: rect.left + (currentPointer.x * rect.width / LOGICAL_W), clientY: rect.top + (currentPointer.y * rect.height / LOGICAL_H) });
+                        if (shots <= 0) {
+                            stopMachineGunFire();
+                        }
+                    }, 120);
+                } else {
+                    // Ran out of ammo on the very first shot
+                    stopMachineGunFire();
+                }
+            } else {
+                fireShot(fakeEvent);
+            }
+        }
+
+        function pointerMove(clientX, clientY) {
+            // Update the crosshair position. This is read by the flamethrower/machinegun intervals.
+            setCrosshairFromClient(clientX, clientY);
+        }
+
+        function pointerEnd() {
+            pointerDown = false;
+            stopMachineGunFire();
+            // Stop flamethrower interval if it's running
+            if (flamethrowerInterval) {
+                clearInterval(flamethrowerInterval);
+                flamethrowerInterval = null;
+                flamethrowerRingEl.style.display = 'none';
+
+                // Stop looping audio
+                if (flamethrowerAudioSource) {
+                    flamethrowerAudioSource.stop();
+                    flamethrowerAudioSource.disconnect();
+                    flamethrowerAudioSource = null;
+                }
+            }
+        }
+
+        function stopMachineGunFire() {
+            if (machineGunInterval) {
+                clearInterval(machineGunInterval);
+                machineGunInterval = null;
+                
+                // Play the final trailing echo sound only if shots were actually fired
+                if (machineGunBurstCount > 0) {
+                    playSound(audioBuffers.machinegunEcho, gainNodes.machinegunEcho);
+                }
+                machineGunBurstCount = 0;
+            }
+        }
+
+        function elementIsWeaponControl(target) {
+            return !!(target && (target.closest && target.closest('#weapon-selection, .weapon-btn, .weapon-btn-wrapper')));
+        }
+
+        function isOverlayActive() {
+            // Check if any of the overlay screens are currently displayed
+            return getComputedStyle(document.getElementById('start-screen')).display !== 'none' ||
+                   getComputedStyle(document.getElementById('win-screen')).display !== 'none' ||
+                   getComputedStyle(document.getElementById('game-over-screen')).display !== 'none';
+        }
+
+
+        function setupListeners() {
+            // Mouse
+            document.addEventListener('mousemove', e => pointerMove(e.clientX, e.clientY));
+            document.addEventListener('mousedown', e => {
+                if (elementIsWeaponControl(e.target)) return;
+                pointerStart(e.clientX, e.clientY);
+            });
+            document.addEventListener('mouseup', () => { if (pointerDown) pointerEnd(); });
+
+            // Touch: mirror mouse behaviour but ignore touches that start on HUD controls so buttons remain clickable
+            document.addEventListener('touchstart', ev => {
+                // If an overlay is active, don't process game input for this touch.
+                // This allows links and buttons on the overlays to be tapped.
+                if (isOverlayActive()) {
+                    return;
+                }
+                if (!ev.touches || ev.touches.length === 0) return;
+                const t = ev.touches[0];
+                // If touch started on a weapon button (or any element inside #weapon-selection), allow default so the button receives the click
+                if (elementIsWeaponControl(t.target)) {
+                    return; // do not preventDefault, do not start firing
+                }
+                ev.preventDefault();
+                pointerStart(t.clientX, t.clientY);
+            }, { passive: false });
+
+            document.addEventListener('touchmove', ev => {
+                if (!ev.touches || ev.touches.length === 0) return;
+                if (isOverlayActive()) {
+                    return;
+                }
+                const t = ev.touches[0];
+                // If the touch is interacting with HUD controls, do not intercept
+                if (elementIsWeaponControl(t.target)) {
+                    return;
+                }
+                ev.preventDefault();
+                pointerMove(t.clientX, t.clientY); // Pass the touch object
+            }, { passive: false });
+
+            document.addEventListener('touchend', ev => {
+                if (isOverlayActive()) {
+                    return;
+                }
+                const touch = (ev.changedTouches && ev.changedTouches[0]);
+                if (touch && elementIsWeaponControl(touch.target)) {
+                    // Let the native click flow happen for the button; do not call preventDefault or pointerEnd
+                    return;
+                }
+                // For touches that did not target controls, handle end
+                ev.preventDefault();
+                if (pointerDown) pointerEnd();
+            }, { passive: false });
+
+            // Weapon buttons
+            document.querySelectorAll('.weapon-btn-wrapper').forEach(wrapper => {
+                wrapper.addEventListener('click', () => {
+                    const selectedWeapon = wrapper.querySelector('.weapon-btn').dataset.weapon;                    
+                    const cost = weapons[selectedWeapon].cost(round);
+                    const birdsInRound = bigDaddyGull ? 1 : birdsThisRound.length;
+                    const maxAmmo = weapons[selectedWeapon].ammo(round, birdsInRound);
+
+                    if (currentWeapon === selectedWeapon) {
+                        // Logic to repurchase ammo for the current weapon
+                        if (shots < maxAmmo) { // Only allow purchase if ammo is not full
+                            if (score < cost) {
+                                showNotification("NOT ENOUGH SCORE");
+                                return;
+                            }
+                            score -= cost;
+                            shots = maxAmmo; // Replenish ammo
+                            updateHUD(birdsInRound);
+                        }
+                    } else {
+                        // Logic to switch to a new weapon
+                        if (score < cost) {
+                            showNotification("NOT ENOUGH SCORE");
+                            return;
+                        }
+                        score -= cost;
+                        currentWeapon = selectedWeapon;
+                        shots = maxAmmo;
+                        updateHUD(birdsInRound);
+                        updateActiveWeaponButton();
+                    }
+                });
+            });
+            document.addEventListener('contextmenu', e => e.preventDefault());
+        }
+
+        function showWinScreen() {
+            canShoot = false;
+            crosshair.style.display = 'none'; // Hide the game's crosshair
+            game.style.cursor = 'default'; // Show the default cursor
+            winScreenEl.style.display = 'flex';
+        }
+        function stopAllMusic() {
+            if (musicSource) musicSource.stop();
+            if (bossMusicSource) bossMusicSource.stop();
+            musicSource = null;
+            bossMusicSource = null;
+        }
+
+        function showGameOverScreen(reason) {
+            if (gameOver) return; // Prevent multiple calls
+            gameOver = true;
+            canShoot = false;
+            crosshair.style.display = 'none'; // Hide the game's crosshair
+            game.style.cursor = 'default'; // Show the default cursor
+
+            const reasonEl = document.getElementById('game-over-reason');
+            if (reasonEl) reasonEl.textContent = reason || "The hunt is over.";
+
+            gameOverScreenEl.style.display = 'flex';
+        }
+        function resetGame() {
+            game.style.cursor = 'none'; // Re-hide cursor for next game
+            window.location.reload();
+        }
+
+        let notificationTimeout = null;
+        function showNotification(message) {
+            if (notificationTimeout) {
+                clearTimeout(notificationTimeout);
+            }
+            gameNotificationEl.textContent = message;
+            gameNotificationEl.style.opacity = '1';
+            notificationTimeout = setTimeout(() => {
+                gameNotificationEl.style.opacity = '0';
+            }, 2000);
+        }
+
+        function initGame() {
+            document.getElementById('start-screen').style.display = 'none';
+
+            // --- AUDIO INITIALIZATION ---
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                // On mobile, create a compressor to counteract OS-level audio normalization.
+                // On desktop, connect directly to the output to leave audio unchanged.
+                if (isMobile) {
+                    const compressor = audioContext.createDynamicsCompressor();
+                    compressor.threshold.value = -50;
+                    compressor.knee.value = 40;
+                    compressor.ratio.value = 12;
+                    compressor.attack.value = 0;
+                    compressor.release.value = 0.25;
+                    compressor.connect(audioContext.destination);
+                    sfxDestination = compressor;
+                } else {
+                    sfxDestination = audioContext.destination;
+                }
+
+                // Function to load and decode audio into buffers
+                const loadSound = (url, name) => {
+                    fetch(url)
+                        .then(response => response.arrayBuffer())
+                        .then(data => audioContext.decodeAudioData(data))
+                        .then(buffer => {
+                            audioBuffers[name] = buffer;
+                            // Special handling for looping background music
+                            if (name === 'music' && !musicSource) {
+                                musicSource = audioContext.createBufferSource();
+                                musicSource.buffer = buffer;
+                                musicSource.loop = true;
+                                musicSource.connect(gainNodes.music);
+                                musicSource.start(0);
+                                
+                            }
+                        })
+                        .catch(e => console.error(`Error decoding audio data for ${name}:`, e));
+                };
+
+                // Create gain nodes (volume controls) for each weapon and connect to destination
+                // Desktop values are significantly lowered to match original <audio> element perceived volume.
+                gainNodes.pistol = audioContext.createGain();
+                gainNodes.pistol.gain.value = isMobile ? 0.25 : 0.04; // Quieter on both
+                gainNodes.pistol.connect(sfxDestination);
+
+                gainNodes.machinegun = audioContext.createGain();
+                gainNodes.machinegun.gain.value = isMobile ? 0.15 : 0.02; // Quieter on both
+                gainNodes.machinegun.connect(sfxDestination);
+
+                gainNodes.rocket = audioContext.createGain();
+                gainNodes.rocket.gain.value = isMobile ? 0.4 : 0.07; // Quieter on both
+                gainNodes.rocket.connect(sfxDestination);
+
+                gainNodes.seagull = audioContext.createGain();
+                gainNodes.seagull.gain.value = isMobile ? 0.2 : 0.05;
+                gainNodes.seagull.connect(sfxDestination);
+
+                // Create gain node for the boss
+                gainNodes.bossGull = audioContext.createGain();
+                gainNodes.bossGull.gain.value = isMobile ? 0.6 : 0.15; // Louder than regular gulls
+                gainNodes.bossGull.connect(sfxDestination);
+
+                // Create gain node for the boss death sound
+                gainNodes.bossDeath = audioContext.createGain();
+                gainNodes.bossDeath.gain.value = isMobile ? 0.7 : 0.2; // Make it impactful
+                gainNodes.bossDeath.connect(sfxDestination);
+
+                // Create gain node for the boss explosion sound
+                gainNodes.bossPoof = audioContext.createGain();
+                gainNodes.bossPoof.gain.value = isMobile ? 0.8 : 0.25; // Nice and loud
+                gainNodes.bossPoof.connect(sfxDestination);
+
+                gainNodes.dogLaugh = audioContext.createGain();
+                gainNodes.dogLaugh.gain.value = isMobile ? 0.7 : 0.1; // Matched to original perceived volume
+                gainNodes.dogLaugh.connect(sfxDestination);
+
+                // Create gain node for hit sounds
+                gainNodes.hit = audioContext.createGain();
+                gainNodes.hit.gain.value = isMobile ? 0.5 : 0.12;
+                gainNodes.hit.connect(sfxDestination);
+
+                // Create gain node for regular seagull hit sounds
+                gainNodes.seagullHit = audioContext.createGain();
+                gainNodes.seagullHit.gain.value = isMobile ? 0.4 : 0.1;
+                gainNodes.seagullHit.connect(sfxDestination);
+
+                // Create gain node for flamethrower loop
+                gainNodes.flamethrower = audioContext.createGain();
+                gainNodes.flamethrower.gain.value = isMobile ? 0.4 : 0.08;
+                gainNodes.flamethrower.connect(sfxDestination);
+
+                // Create gain node for machine gun echo
+                gainNodes.machinegunEcho = audioContext.createGain();
+                gainNodes.machinegunEcho.gain.value = isMobile ? 0.3 : 0.06;
+                gainNodes.machinegunEcho.connect(sfxDestination);
+
+                // Create gain node for turd ploop
+                gainNodes.ploop = audioContext.createGain();
+                gainNodes.ploop.gain.value = isMobile ? 0.7 : 0.2;
+                gainNodes.ploop.connect(sfxDestination);
+
+                // Create and connect gain node for music
+                gainNodes.music = audioContext.createGain();
+                gainNodes.music.gain.value = isMobile ? 0.04 : 0.25; // Louder on both
+                gainNodes.music.connect(audioContext.destination); // Music bypasses the mobile compressor
+
+                // Create and connect gain node for boss music
+                gainNodes.bossMusic = audioContext.createGain();
+                gainNodes.bossMusic.gain.value = isMobile ? 0.08 : 0.65; // Further increased volume for boss theme on desktop
+                gainNodes.bossMusic.connect(audioContext.destination);
+
+                // Load all sounds
+                // Seagull Sounds
+                loadSound('PICTURES AND VIDEOS/Squawk.mp3', 'seagull1');
+                loadSound('PICTURES AND VIDEOS/High Trill.mp3', 'seagull2');
+                loadSound('PICTURES AND VIDEOS/Low Trill.mp3', 'seagull3');
+                loadSound('PICTURES AND VIDEOS/Mix Trill.mp3', 'seagull4');
+                loadSound('PICTURES AND VIDEOS/BDDead.mp3', 'bossDeath');
+                loadSound('PICTURES AND VIDEOS/BDPoof.mp3', 'bossPoof');
+                loadSound('PICTURES AND VIDEOS/BDGull.mp3', 'bossGull');
+                // Other Sounds
+                loadSound('PICTURES AND VIDEOS/Seagull Hunting Time.mp3', 'music');
+                loadSound('PICTURES AND VIDEOS/Boss Theme.mp3', 'bossMusic');
+                loadSound('PICTURES AND VIDEOS/Gunshot.mp3', 'pistol');
+                loadSound('PICTURES AND VIDEOS/Machine Gun.mp3', 'machinegun');
+                loadSound('PICTURES AND VIDEOS/Bazooka.mp3', 'rocket');
+                loadSound('PICTURES AND VIDEOS/Big Dummy.mp3', 'dogLaugh');
+                loadSound('PICTURES AND VIDEOS/GullShot.mp3', 'seagullHit');
+                loadSound('PICTURES AND VIDEOS/BDShot.mp3', 'hit');
+                loadSound('PICTURES AND VIDEOS/FlameThrow.mp3', 'flamethrower');
+                loadSound('PICTURES AND VIDEOS/Echo.mp3', 'machinegunEcho');
+                loadSound('PICTURES AND VIDEOS/Ploop.mp3', 'ploop');
+
+            } catch (e) { console.error("Web Audio API is not supported in this browser", e); }
+
+            setupListeners();
+            updateActiveWeaponButton();
+            startRound();
+            gameLoop();
+        }
+
+        function screenClickHandler(e) {
+            // Do not start/reset game if a navigation link is clicked
+            if (e.target.closest('.screen-nav a')) {
+                return;
+            }
+            // For touch events, prevent default to avoid issues, but not for links
+            if (e.type === 'touchstart') {
+                e.preventDefault();
+            }
+            
+            // Based on which screen is visible, perform the correct action
+            if (getComputedStyle(winScreenEl).display !== 'none' || getComputedStyle(gameOverScreenEl).display !== 'none') {
+                resetGame();
+            } else {
+                initGame();
+            }
+        }
+
+        // --- Screen Event Listeners ---
+        const startScreenEl = document.getElementById('start-screen');
+        startScreenEl.addEventListener('click', screenClickHandler, { once: true });
+        winScreenEl.addEventListener('click', resetGame);
+        gameOverScreenEl.addEventListener('click', resetGame);
+        startScreenEl.addEventListener('touchstart', screenClickHandler, { passive: false, once: true });
+
+        document.getElementById('play-again-btn').addEventListener('click', resetGame);
+
+        document.getElementById('retry-btn').addEventListener('click', resetGame);
+
+    </script>
+</body>
+</html>
