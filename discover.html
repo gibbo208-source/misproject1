@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <!-- Decorative side columns -->
@@ -17,7 +17,7 @@
     <header class="site-header">
         <nav class="top-nav" aria-label="Primary">
             <a class="brand" href="index.html">
-                <img src="../images/emblemleft.jpg" alt="Site Emblem" class="brand-emblem" />
+                <img src="images/emblemleft.jpg" alt="Site Emblem" class="brand-emblem" />
             </a>
             <ul class="nav-links">
                 <li><a href="hobbies.html">Hobbies</a></li>
@@ -52,6 +52,14 @@
                 <p>
                     Overall, both Duluth and UMD may seem like nothing special at first glance, but are ultimately the jewel of the upper midwest.
                 </p>
+                <!-- Embedded UMD marketing video (served from repository's videos/ folder) -->
+                <figure class="video-embed" aria-hidden="false">
+                    <figcaption>UMD Marketing Video</figcaption>
+                    <video controls preload="metadata" width="100%" style="border-radius:8px;">
+                        <source src="videos/UMD_Marketing_Video.mp4" type="video/mp4">
+                        Your browser does not support the video tag. You can <a href="videos/UMD_Marketing_Video.mp4">download the video</a> instead.
+                    </video>
+                </figure>
             </div>
         </section>
                 <p>
@@ -78,6 +86,6 @@
         <small>&copy; <span id="year"></span> My Personal Site</small>
     </footer>
 
-    <script src="../js/main.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>

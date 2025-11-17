@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume | About Me</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Decorative side columns -->
+    <div class="side-column left"></div>
+    <div class="side-column right"></div>
+
+    <header class="site-header">
+        <nav class="top-nav" aria-label="Primary">
+            <a class="brand" href="index.html">
+                <img src="images/emblemleft.jpg" alt="Site Emblem" class="brand-emblem" />
+            </a>
+            <ul class="nav-links">
+                <li><a href="hobbies.html">Hobbies</a></li>
+                <li><a href="game.html">Game</a></li>
+                <li><a href="career.html">Career</a></li>
+                <li><a href="discover.html">Discover</a></li>
+                <li><a class="active" href="resume.html" aria-current="page">Resume</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="page-content">
+        <section class="intro">
+            <h1>Resume</h1>
+        </section>
+        <section class="resume-section">
+            <div class="resume-embed-container">
+                <embed src="../pdf/cgresume.pdf" type="application/pdf" width="100%" height="600px" alt="My current resume summarizing my work and volunteer experience.">
+            </div>
+            <p class="resume-description">My current resume summarizing my work and volunteer experience.</p>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <small>&copy; <span id="year"></span> My Personal Site</small>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
