@@ -211,6 +211,7 @@
                     cursor: pointer;
                     padding: 8px;
                     z-index: 101;
+                    transition: none;
                 }
                 
                 .mobile-menu-button span {
@@ -218,7 +219,19 @@
                     height: 3px;
                     background: var(--text-color);
                     border-radius: 2px;
-                    transition: all 0.3s ease;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                
+                .mobile-menu-button.active span:nth-child(1) {
+                    transform: rotate(45deg) translate(8px, 8px);
+                }
+                
+                .mobile-menu-button.active span:nth-child(2) {
+                    opacity: 0;
+                }
+                
+                .mobile-menu-button.active span:nth-child(3) {
+                    transform: rotate(-45deg) translate(7px, -7px);
                 }
                 
                 @media screen and (max-width: 768px) {
@@ -227,7 +240,7 @@
                     }
                     
                     .nav-links {
-                        position: absolute;
+                        position: fixed;
                         top: 100%;
                         left: 0;
                         right: 0;
@@ -236,16 +249,22 @@
                         flex-direction: column;
                         padding: 1rem;
                         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-                        transform: translateY(-100%);
+                        max-height: 0;
+                        overflow: hidden;
                         opacity: 0;
                         visibility: hidden;
-                        transition: all 0.3s ease;
+                        transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, visibility 0.3s ease;
                     }
                     
                     .nav-links.active {
-                        transform: translateY(0);
+                        max-height: 500px;
                         opacity: 1;
                         visibility: visible;
+                    }
+                    
+                    .nav-links a {
+                        padding: 12px 16px;
+                        text-align: center;
                     }
                     
                     .top-nav {
@@ -259,12 +278,11 @@
             topNav.insertBefore(mobileMenuButton, navLinks);
             
             // Toggle menu on button click
-            mobileMenuButton.addEventListener('click', function() {
+            mobileMenuButton.addEventListener('click', function(e) {
+                e.stopPropagation();
                 const isExpanded = this.getAttribute('aria-expanded') === 'true';
                 this.setAttribute('aria-expanded', !isExpanded);
                 navLinks.classList.toggle('active');
-                
-                // Animate hamburger icon
                 this.classList.toggle('active');
             });
             
